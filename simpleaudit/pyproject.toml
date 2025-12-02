@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simpleaudit"
+version = "0.1.0"
+description = "Lightweight AI Safety Auditing Framework"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "SimpleAudit Contributors"}
+]
+keywords = ["ai", "safety", "audit", "red-team", "llm", "rag", "testing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Testing",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "anthropic>=0.18.0",
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.5.0"]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+all = ["simpleaudit[plot,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/simpleaudit"
+Documentation = "https://github.com/yourusername/simpleaudit#readme"
+Repository = "https://github.com/yourusername/simpleaudit"
+Issues = "https://github.com/yourusername/simpleaudit/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simpleaudit*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = ["E501"]
