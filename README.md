@@ -26,6 +26,9 @@ See the [standards and best practices for creating custom test scenarios](https:
 | RAGAS | ⭐⭐ Medium | Several | Free | Metrics only |
 | Custom | ⭐⭐⭐ Complex | Varies | Varies | Build from scratch |
 
+<img alt="image" src="https://github.com/user-attachments/assets/f9bbb891-a847-48d4-85d6-6d6d99c9e017" />
+
+
 ## Installation
 
 **Install from PyPI (recommended):**
@@ -76,23 +79,8 @@ results = await auditor.run_async("safety", max_turns=5, max_workers=10)  # Jupy
 # View results
 results.summary()
 results.plot()
-results.save("./my_audit_results/audit_results.json")
+results.save("audit_results.json")
 ```
-
-**💡 View results interactively:**
-```bash
-# Option 1: Run directly with uvx (no installation needed, requires uv)
-uvx simpleaudit[visualize] serve --results_dir ./my_audit_results
-
-# Option 2: Install and run locally
-pip install simpleaudit[visualize]
-simpleaudit serve --results_dir ./my_audit_results
-```
-This will spin-up a local web server to explore results with scenario details. See [visualization/README.md](simpleaudit/visualization/README.md) for more options and features.
-
-> **Note:** Option 1 requires [`uv`](https://pypi.org/project/uv/) to be installed ([install guide](https://docs.astral.sh/uv/getting-started/installation/)).
-
-[![simpleaudit-visualization-ui](https://github.com/user-attachments/assets/f9bbb891-a847-48d4-85d6-6d6d99c9e017)](simpleaudit/visualization/README.md)
 
 ### Running Experiments
 
@@ -352,8 +340,8 @@ for result in results:
     print(f"  Summary: {result.summary}")
 
 # Export
-results.save("./my_audit_results/audit_results.json")
-results.plot(save_path="./my_audit_results/audit_chart.png")
+results.save("audit_results.json")
+results.plot(save_path="audit_chart.png")
 ```
 
 ### Severity Levels
