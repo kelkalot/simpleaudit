@@ -45,6 +45,8 @@ SimpleAudit is built around an **instrumental-validity chain** — when no label
 | **Target sensitivity** | Score variance must come from the target, not the apparatus | Target-dominant (η² ≈ 0.52); judge variance largely cancels under deltas |
 | **Reproducibility** | Scores must stabilise across reruns | Within ~1 point on the 0–100 scale by n=10 |
 
+The reproducibility leg operates at two levels. At the **aggregate** level, the overall score stabilises within ~1 point by n=10. At the **per-scenario** level, the fragility signal (normalised entropy, ordinal spread, modal agreement) identifies individual verdicts that are unstable across runs — a direct application of the *Jagged Judges* finding ([Zhao et al., 2026](https://arxiv.org/abs/2608.12645)) that baseline jury majority strength is the best single-shot predictor of which items flip under perturbation. The reframing check extends this to prompt-wording invariance, isolating apparatus artifacts from genuine target behaviour.
+
 We apply the same chain to [Petri](https://github.com/safety-research/petri) — both tools pass, so the differences live upstream of the chain. SimpleAudit's choice is to **commit to a fixed scenario pack, rubric, auditor, judge, sampling configuration, and rerun count** by default, so every rerun is comparable. Petri's design point is discovery over a 38-dimension rubric where the user picks the construct and aggregation; that flexibility is the right call for discovery and moves work to the user when the goal is a single comparable score.
 
 Practical consequences:
@@ -218,6 +220,63 @@ results.stability("my-model").summary()
 # Save and reload all runs manually
 results.save("repeated_experiment.json")
 ```
+
+##### Fragility Signal
+
+Each scenario's verdict can be *fragile* — the judge disagrees across runs, making the severity unreliable. The stability report includes per-scenario **entropy** (normalised Shannon, 0 = perfectly stable) and **ordinal spread** (std of severity positions on the 0–4 scale). Scenarios with agreement below 60% are flagged ⚠ in the summary.
+
+```python
+stab = results.stability("gpt-4o-mini")
+
+# Scenarios where the judge's verdict is unreliable
+fragile = stab.fragile(threshold=0.6)
+for name, stats in fragile.items():
+    print(f"{name}: agreement={stats.agreement_rate:.2f}, entropy={stats.entropy:.2f}")
+```
+
+This is motivated by the *Jagged Judges* finding (arXiv:2608.12645): LLM judges can be locally consistent yet globally unstable, flipping verdicts on individual scenarios without changing the aggregate score.
+
+##### Adaptive Reruns
+
+Instead of running a fixed number of repetitions for every scenario, `adaptive_reruns` spends extra budget only on scenarios that need it:
+
+```python
+experiment = AuditExperiment(
+    models=[{"model": "my-model", "provider": "ollama"}],
+    judge_model="gpt-4o",
+    judge_provider="openai",
+    n_repetitions=5,
+    adaptive_reruns={"agreement_target": 0.8, "max_extra": 5},
+)
+results = experiment.run("safety")
+```
+
+After the base 5 runs, any scenario whose modal verdict is held by fewer than 80% of runs is re-run up to 5 additional times. Reruns stop early once every scenario meets the target. This is off by default (`adaptive_reruns=None`).
+
+##### Reframing Robustness Check
+
+Resampling varies the conversation *and* the grading. A verdict that survives resampling but flips between two semantically equivalent judge prompts is measuring the prompt, not the target — an apparatus artifact. The reframing check holds the transcript fixed and varies only the judge prompt wording:
+
+```python
+from simpleaudit.reframing import PromptVariant, reframing_check, load_stored_records
+from simpleaudit.judges import get_judge
+
+base = get_judge("safety")["judge_prompt"]
+results = reframing_check(
+    judge_client=client,
+    judge_model="claude-sonnet-4-20250514",
+    records=load_stored_records("results/my_audit.json"),
+    variants=[
+        PromptVariant("baseline", base),
+        PromptVariant("reordered", reordered_rubric_text),
+    ],
+)
+for entry in results.shifts():
+    if entry["shifted"]:
+        print(f"{entry['scenario']}: {entry['modals']} → {entry['direction']}")
+```
+
+Because transcripts are already stored, this costs judge tokens only — no new target calls. Variants are supplied explicitly (not model-generated) so the instrument measuring prompt-induced movement doesn't introduce an uncontrolled prompt axis of its own.
 
 Use `save_dir` to persist each run as it completes and automatically resume after a crash:
 
