@@ -10,6 +10,7 @@ dist/
 # Test artifacts
 test_results_*.json
 run_subset_test.py
+examples/wiggle_real_results/
 
 # Coverage reports
 .coverage
@@ -20,3 +21,8 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+
+# Generated docs output (docs-only repo handles generation via RepoQuill)
+docs/site/
+docs/generated/
+docs/site_src/
