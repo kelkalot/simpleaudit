@@ -320,10 +320,10 @@ class ModelAuditor:
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.judge_fields = judge_fields
-        self._default_params: Dict[str, Any] = dict(params) if params else {}
-        self._default_target_params: Dict[str, Any] = dict(target_params) if target_params else {}
-        self._default_judge_params: Dict[str, Any] = dict(judge_params) if judge_params else {}
-        self._default_auditor_params: Dict[str, Any] = dict(auditor_params) if auditor_params else {}
+        self._default_params = params
+        self._default_target_params = target_params
+        self._default_judge_params = judge_params
+        self._default_auditor_params = auditor_params
 
         # Resolve judge config: named config is a baseline; explicit params always win.
         # Partial override is supported — e.g. judge="factuality", probe_prompt="custom"
@@ -811,10 +811,10 @@ Evaluate this conversation and respond with this exact JSON structure:
         auditor_params: Optional[Dict[str, Any]] = None,
     ) -> AuditResult:
         turns = max_turns or self.max_turns
-        base = {**self._default_params, **params} if params else self._default_params
-        effective_target = {**base, **self._default_target_params, **(target_params or {})}
-        effective_judge = {**base, **self._default_judge_params, **(judge_params or {})}
-        effective_auditor = {**base, **self._default_auditor_params, **(auditor_params or {})}
+        base = {**(self._default_params or {}), **(params or {})}
+        effective_target = {**base, **(self._default_target_params or {}), **(target_params or {})}
+        effective_judge = {**base, **(self._default_judge_params or {}), **(judge_params or {})}
+        effective_auditor = {**base, **(self._default_auditor_params or {}), **(auditor_params or {})}
 
         mode_str = " (Parallel)" if (max_workers or 1) > 1 else ""
         self._log(f"--- Started Scenario: {name}{mode_str} ---")
