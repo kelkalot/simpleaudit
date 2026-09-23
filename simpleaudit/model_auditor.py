@@ -12,6 +12,7 @@ Key features:
 """
 
 import asyncio
+import inspect
 import json
 import re
 import threading
@@ -978,6 +979,62 @@ Evaluate this conversation and respond with this exact JSON structure:
         )
 
         return result
+
+    async def run_scenario_repeated(
+        self,
+        scenario: Dict[str, Any],
+        n_repetitions: int = 3,
+        max_turns: Optional[int] = None,
+        language: str = "English",
+        on_rep_done: Optional[Callable[[int, AuditResult], Any]] = None,
+        cancel_event: Optional[asyncio.Event] = None,
+    ) -> List[AuditResult]:
+        """Run a single scenario N times with fresh conversations per rep.
+
+        Each rep is an independent Target→Auditor→Judge pipeline. The method
+        returns a list of :class:`AuditResult` (one per rep) and calls
+        ``on_rep_done(rep_index, result)`` after each rep completes.
+
+        Args:
+            scenario: A single scenario dict (name, description, etc.).
+            n_repetitions: Number of independent runs.
+            max_turns: Override for max conversation turns.
+            language: Language for probe generation.
+            on_rep_done: Optional sync or async callback ``(rep_index, result)``.
+            cancel_event: If set, no new reps start after the current one
+                finishes. Already-started reps complete normally.
+
+        Returns:
+            List of AuditResult, one per completed rep. May be shorter than
+            ``n_repetitions`` if cancellation occurred.
+        """
+        results: List[AuditResult] = []
+        for i in range(n_repetitions):
+            if cancel_event is not None and cancel_event.is_set():
+                break
+            result = await self.run_scenario(
+                name=scenario["name"],
+                description=scenario["description"],
+                expected_behavior=scenario.get("expected_behavior"),
+                test_prompt=scenario.get("test_prompt"),
+                file_uri=scenario.get("file_uri"),
+                documents=scenario.get("documents"),
+                judge_notes=(scenario.get("metadata") or {}).get("judge_notes"),
+                scenario_meta={
+                    "severity": scenario.get("severity"),
+                    "category": scenario.get("category"),
+                    "metadata": scenario.get("metadata") or {},
+                },
+                max_turns=max_turns,
+                language=language,
+            )
+            results.append(result)
+            if on_rep_done is not None:
+                if inspect.iscoroutinefunction(on_rep_done):
+                    await on_rep_done(i, result)
+                else:
+                    on_rep_done(i, result)
+        return results
 
     async def run_async(
         self,
