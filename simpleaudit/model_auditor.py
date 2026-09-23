@@ -305,6 +305,7 @@ class ModelAuditor:
         target_kwargs: Optional[Dict[str, Any]] = None,
         auditor_kwargs: Optional[Dict[str, Any]] = None,
         judge_postprocess: Optional[Callable[..., Dict[str, Any]]] = None,
+        params: Optional[Dict[str, Any]] = None,
         target_params: Optional[Dict[str, Any]] = None,
         judge_params: Optional[Dict[str, Any]] = None,
         auditor_params: Optional[Dict[str, Any]] = None,
@@ -319,9 +320,10 @@ class ModelAuditor:
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.judge_fields = judge_fields
+        self.params = params
         self.target_params = target_params
         self.judge_params = judge_params
-        self.auditor_params = auditor_params if auditor_params is not None else judge_params
+        self.auditor_params = auditor_params if auditor_params is not None else (judge_params if judge_params is not None else params)
 
         # Resolve judge config: named config is a baseline; explicit params always win.
         # Partial override is supported — e.g. judge="factuality", probe_prompt="custom"
@@ -803,14 +805,16 @@ Evaluate this conversation and respond with this exact JSON structure:
         pbar_judge: Optional[tqdm] = None,
         max_workers: Optional[int] = None,
         scenario_meta: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
         target_params: Optional[Dict[str, Any]] = None,
         judge_params: Optional[Dict[str, Any]] = None,
         auditor_params: Optional[Dict[str, Any]] = None,
     ) -> AuditResult:
         turns = max_turns or self.max_turns
-        effective_target = {**(self.target_params or {}), **(target_params or {})}
-        effective_judge = {**(self.judge_params or {}), **(judge_params or {})}
-        effective_auditor = {**(self.auditor_params or {}), **(auditor_params or {})}
+        base = {**(self.params or {}), **(params or {})}
+        effective_target = {**base, **(self.target_params or {}), **(target_params or {})}
+        effective_judge = {**base, **(self.judge_params or {}), **(judge_params or {})}
+        effective_auditor = {**base, **(self.auditor_params or {}), **(auditor_params or {})}
 
         mode_str = " (Parallel)" if (max_workers or 1) > 1 else ""
         self._log(f"--- Started Scenario: {name}{mode_str} ---")
@@ -981,6 +985,7 @@ Evaluate this conversation and respond with this exact JSON structure:
         max_turns: Optional[int] = None,
         language: str = "English",
         max_workers: int = 1,
+        params: Optional[Dict[str, Any]] = None,
         target_params: Optional[Dict[str, Any]] = None,
         judge_params: Optional[Dict[str, Any]] = None,
         auditor_params: Optional[Dict[str, Any]] = None,
@@ -1049,6 +1054,7 @@ Evaluate this conversation and respond with this exact JSON structure:
                         pbar_audit=pbar_audit,
                         pbar_judge=pbar_judge,
                         max_workers=max_workers,
+                        params=params,
                         target_params=target_params,
                         judge_params=judge_params,
                         auditor_params=auditor_params,
@@ -1104,6 +1110,7 @@ Evaluate this conversation and respond with this exact JSON structure:
         max_turns: Optional[int] = None,
         language: str = "English",
         max_workers: int = 1,
+        params: Optional[Dict[str, Any]] = None,
         target_params: Optional[Dict[str, Any]] = None,
         judge_params: Optional[Dict[str, Any]] = None,
         auditor_params: Optional[Dict[str, Any]] = None,
@@ -1117,6 +1124,7 @@ Evaluate this conversation and respond with this exact JSON structure:
                     max_turns=max_turns,
                     language=language,
                     max_workers=max_workers,
+                    params=params,
                     target_params=target_params,
                     judge_params=judge_params,
                     auditor_params=auditor_params,
