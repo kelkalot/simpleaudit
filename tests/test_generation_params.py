@@ -26,44 +26,40 @@ class CapturingClient:
         return types.SimpleNamespace(choices=[choice], usage=usage)
 
 
-def test_run_scenario_passes_params_to_target():
-    """params on run_scenario reach the target's acompletion call."""
+def test_run_scenario_target_params_reach_target():
+    """target_params on run_scenario reach the target's acompletion call."""
     target = CapturingClient("I cannot help with that.")
     judge = fixed_severity_judge("pass")
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
 
-    params = {"temperature": 0.7, "max_tokens": 2048}
     asyncio.run(
         ma.run_scenario(
             name="Test",
             description="A test scenario.",
             test_prompt="Hello",
-            params=params,
+            target_params={"temperature": 0.7, "max_tokens": 2048},
         )
     )
 
-    # The target call is the one whose model is "fake-model"
-    target_calls = [c for c in target.calls]
-    assert len(target_calls) == 1
-    assert target_calls[0].get("temperature") == 0.7
-    assert target_calls[0].get("max_tokens") == 2048
+    assert len(target.calls) == 1
+    assert target.calls[0].get("temperature") == 0.7
+    assert target.calls[0].get("max_tokens") == 2048
 
 
-def test_run_scenario_params_reach_judge():
-    """params on run_scenario also reach the judge's acompletion call."""
+def test_run_scenario_judge_params_reach_judge():
+    """judge_params on run_scenario reach the judge's acompletion call."""
     target = fixed_target("I cannot help with that.")
     judge = CapturingClient()
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
 
-    params = {"top_p": 0.9}
     asyncio.run(
         ma.run_scenario(
             name="Test",
             description="A test scenario.",
             test_prompt="Hello",
-            params=params,
+            judge_params={"top_p": 0.9},
         )
     )
 
@@ -92,18 +88,17 @@ def test_run_scenario_no_params_is_noop():
         assert "top_p" not in call
 
 
-def test_run_async_passes_params():
-    """params on run_async propagate to run_scenario and reach acompletion."""
+def test_run_async_passes_target_params():
+    """target_params on run_async propagate to run_scenario and reach acompletion."""
     target = CapturingClient("ok")
     judge = fixed_severity_judge("pass")
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
 
-    params = {"temperature": 0.3, "chat_template_kwargs": {"enable_thinking": False}}
     asyncio.run(
         ma.run_async(
             scenarios=[{"name": "Test", "description": "A test scenario."}],
-            params=params,
+            target_params={"temperature": 0.3, "chat_template_kwargs": {"enable_thinking": False}},
         )
     )
 
@@ -112,21 +107,20 @@ def test_run_async_passes_params():
     assert target.calls[0].get("chat_template_kwargs") == {"enable_thinking": False}
 
 
-def test_run_scenario_params_override_constructor_defaults():
-    """Per-call params override constructor-level defaults."""
+def test_per_call_target_params_override_constructor_defaults():
+    """Per-call target_params override constructor-level target_params."""
     target = CapturingClient("ok")
     judge = fixed_severity_judge("pass")
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    # Simulate constructor-level defaults
-    ma._default_params = {"temperature": 0.5, "max_tokens": 100}
+    ma.target_params = {"temperature": 0.5, "max_tokens": 100}
 
     asyncio.run(
         ma.run_scenario(
             name="Test",
             description="A test scenario.",
             test_prompt="Hello",
-            params={"temperature": 0.9},
+            target_params={"temperature": 0.9},
         )
     )
 
@@ -134,13 +128,13 @@ def test_run_scenario_params_override_constructor_defaults():
     assert target.calls[0].get("max_tokens") == 100  # inherited from defaults
 
 
-def test_run_scenario_uses_constructor_defaults_when_no_params():
-    """Constructor-level defaults apply when no per-call params given."""
+def test_constructor_target_params_apply_when_no_per_call():
+    """Constructor-level target_params apply when no per-call params given."""
     target = CapturingClient("ok")
     judge = fixed_severity_judge("pass")
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    ma._default_params = {"temperature": 0.5}
+    ma.target_params = {"temperature": 0.5}
 
     asyncio.run(
         ma.run_scenario(
@@ -159,7 +153,7 @@ def test_target_params_apply_only_to_target():
     judge = CapturingClient()
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    ma._default_target_params = {"temperature": 0.1}
+    ma.target_params = {"temperature": 0.1}
 
     asyncio.run(
         ma.run_scenario(
@@ -179,7 +173,7 @@ def test_judge_params_apply_only_to_judge():
     judge = CapturingClient()
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    ma._default_judge_params = {"temperature": 0.0}
+    ma.judge_params = {"temperature": 0.0}
 
     asyncio.run(
         ma.run_scenario(
@@ -199,7 +193,7 @@ def test_auditor_params_apply_only_to_auditor():
     judge = fixed_severity_judge("pass")
     auditor = CapturingClient("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=2)
-    ma._default_auditor_params = {"temperature": 1.0}
+    ma.auditor_params = {"temperature": 1.0}
 
     asyncio.run(
         ma.run_scenario(
@@ -221,7 +215,7 @@ def test_per_call_role_params_override_constructor_role_defaults():
     judge = fixed_severity_judge("pass")
     auditor = fixed_probe_auditor("Tell me more.")
     ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    ma._default_target_params = {"temperature": 0.1, "max_tokens": 500}
+    ma.target_params = {"temperature": 0.1, "max_tokens": 500}
 
     asyncio.run(
         ma.run_scenario(
@@ -236,22 +230,3 @@ def test_per_call_role_params_override_constructor_role_defaults():
     assert target.calls[0].get("max_tokens") == 500  # inherited from role default
 
 
-def test_base_params_merge_with_role_params():
-    """Base params and role params merge; role wins on conflict."""
-    target = CapturingClient("ok")
-    judge = fixed_severity_judge("pass")
-    auditor = fixed_probe_auditor("Tell me more.")
-    ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
-    ma._default_params = {"temperature": 0.5, "max_tokens": 1000}
-    ma._default_target_params = {"temperature": 0.2}
-
-    asyncio.run(
-        ma.run_scenario(
-            name="Test",
-            description="A test scenario.",
-            test_prompt="Hello",
-        )
-    )
-
-    assert target.calls[0].get("temperature") == 0.2  # role wins
-    assert target.calls[0].get("max_tokens") == 1000  # from base
