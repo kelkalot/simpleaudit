@@ -230,3 +230,65 @@ def test_per_call_role_params_override_constructor_role_defaults():
     assert target.calls[0].get("max_tokens") == 500  # inherited from role default
 
 
+def test_constructor_judge_params_fallback_to_auditor():
+    """judge_params set at construction time falls back to auditor_params."""
+    from unittest.mock import patch, MagicMock
+    from simpleaudit.model_auditor import ModelAuditor
+
+    dummy = MagicMock()
+    with patch.object(ModelAuditor, "_create_anyllm_client", return_value=dummy):
+        ma = ModelAuditor(
+            model="fake-model",
+            provider="openai",
+            judge_model="fake-judge",
+            judge_provider="openai",
+            judge_params={"temperature": 0.2},
+        )
+
+    # auditor_params should inherit from judge_params at construction time
+    assert ma.auditor_params == {"temperature": 0.2}
+    assert ma.judge_params == {"temperature": 0.2}
+
+
+def test_constructor_auditor_params_override_judge_params():
+    """Explicit auditor_params at construction time wins over judge_params."""
+    from unittest.mock import patch, MagicMock
+    from simpleaudit.model_auditor import ModelAuditor
+
+    dummy = MagicMock()
+    with patch.object(ModelAuditor, "_create_anyllm_client", return_value=dummy):
+        ma = ModelAuditor(
+            model="fake-model",
+            provider="openai",
+            judge_model="fake-judge",
+            judge_provider="openai",
+            judge_params={"temperature": 0.2},
+            auditor_params={"temperature": 0.9},
+        )
+
+    assert ma.auditor_params == {"temperature": 0.9}
+    assert ma.judge_params == {"temperature": 0.2}
+
+
+def test_params_cannot_override_framework_keys():
+    """User params cannot override model, messages, stream, or response_format."""
+    target = CapturingClient("ok")
+    judge = fixed_severity_judge("pass")
+    auditor = fixed_probe_auditor("Tell me more.")
+    ma = make_auditor(target=target, judge=judge, auditor=auditor, max_turns=1)
+
+    asyncio.run(
+        ma.run_scenario(
+            name="Test",
+            description="A test scenario.",
+            test_prompt="Hello",
+            target_params={"model": "evil-model", "stream": True, "temperature": 0.5},
+        )
+    )
+
+    call = target.calls[0]
+    assert call["model"] == "fake-model"  # framework wins
+    assert call["stream"] is False  # framework wins
+    assert call["temperature"] == 0.5  # user param still applied
+
+

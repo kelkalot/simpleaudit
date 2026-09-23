@@ -561,15 +561,15 @@ class ModelAuditor:
             # Documents first: the prompt keeps the leading text block, the
             # documents follow it, and any images come last.
             messages.append(_expand_files(_expand_documents(user_message)))
-        kwargs: Dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-            "stream": False,
-        }
-        if response_format:
-            kwargs["response_format"] = response_format
+        kwargs: Dict[str, Any] = {}
         if params:
             kwargs.update(params)
+        # Framework-owned keys always win over user params.
+        kwargs["model"] = model
+        kwargs["messages"] = messages
+        kwargs["stream"] = False
+        if response_format:
+            kwargs["response_format"] = response_format
         attempt = 0
         while True:
             try:
