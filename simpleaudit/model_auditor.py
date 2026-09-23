@@ -321,7 +321,7 @@ class ModelAuditor:
         self.judge_fields = judge_fields
         self.target_params = target_params
         self.judge_params = judge_params
-        self.auditor_params = auditor_params
+        self.auditor_params = auditor_params if auditor_params is not None else judge_params
 
         # Resolve judge config: named config is a baseline; explicit params always win.
         # Partial override is supported — e.g. judge="factuality", probe_prompt="custom"
